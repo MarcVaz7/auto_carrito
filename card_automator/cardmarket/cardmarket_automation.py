@@ -91,22 +91,6 @@ class CardMarketAutomation(BaseAutomation):
             print(f"   📊 Stock: {vendedor['stock_disponible']} unidades")
             print(f"   🛒 Comprando: {copias_a_comprar} copias")
             
-            # NUEVO: Guardar vendedor en el arraylist antes de agregar al carrito
-            info_vendedor = {
-                'nombre': vendedor['vendedor'],
-                'precio_unitario': vendedor['precio'],
-                'copias_compradas': copias_a_comprar,
-                'stock_total': vendedor['stock_disponible'],
-                'carta': nombre_carta,
-                'reputacion': vendedor['reputacion'],
-                'timestamp': time.time()
-            }
-            
-            # Agregar al arraylist de vendedores seleccionados
-            self.vendedores_seleccionados.append(info_vendedor)
-            print(f"   💾 VENDEDOR GUARDADO EN ARRAYLIST: '{vendedor['vendedor']}'")
-            print(f"   📝 Información guardada: {copias_a_comprar} copias de '{nombre_carta}' a €{vendedor['precio']:.2f} cada una")
-            
             # Agregar al carrito
             success = self.agregar_al_carrito_confiable(vendedor)
             
@@ -132,9 +116,6 @@ class CardMarketAutomation(BaseAutomation):
             print("📊 Resumen de compra:")
             for vendedor in vendedores_usados:
                 print(f"   - {vendedor['vendedor']}: {vendedor['copias']} copias × €{vendedor['precio']:.2f}")
-            
-            # NUEVO: Mostrar resumen de vendedores guardados
-            self._mostrar_resumen_vendedores_guardados()
             return True
         else:
             print(f"\n⚠️ Solo se pudieron agregar {cantidad_total - cantidad_restante} de {cantidad_total} copias")
@@ -164,53 +145,3 @@ class CardMarketAutomation(BaseAutomation):
         except Exception as e:
             print(f"❌ Error al agregar: {e}")
             return False
-        
-        
-    def _mostrar_resumen_vendedores_guardados(self):
-        """Muestra un resumen de todos los vendedores guardados en el arraylist"""
-        if not self.vendedores_seleccionados:
-            print("📋 ArrayList de vendedores: Vacío")
-            return
-        
-        print(f"\n{'='*60}")
-        print("🏪 RESUMEN DE VENDEDORES GUARDADOS EN ARRAYLIST")
-        print(f"{'='*60}")
-        
-        # Contar vendedores únicos
-        vendedores_unicos = set(v['nombre'] for v in self.vendedores_seleccionados)
-        print(f"📊 Total de vendedores únicos: {len(vendedores_unicos)}")
-        print(f"📦 Total de transacciones guardadas: {len(self.vendedores_seleccionados)}")
-        
-        # Mostrar detalle de cada vendedor guardado
-        for i, vendedor in enumerate(self.vendedores_seleccionados, 1):
-            print(f"\n{i}. 🏷️  Vendedor: {vendedor['nombre']}")
-            print(f"   📍 Carta: {vendedor['carta']}")
-            print(f"   💰 Precio unitario: €{vendedor['precio_unitario']:.2f}")
-            print(f"   🛒 Copias compradas: {vendedor['copias_compradas']}")
-            print(f"   📊 Stock total disponible: {vendedor['stock_total']}")
-            print(f"   ⭐ Reputación: {vendedor['reputacion']}")
-            print(f"   💵 Total gastado: €{vendedor['precio_unitario'] * vendedor['copias_compradas']:.2f}")
-        
-        # Estadísticas adicionales
-        total_gastado = sum(v['precio_unitario'] * v['copias_compradas'] for v in self.vendedores_seleccionados)
-        total_copias = sum(v['copias_compradas'] for v in self.vendedores_seleccionados)
-        
-        print(f"\n💰 GASTO TOTAL: €{total_gastado:.2f}")
-        print(f"📦 TOTAL DE COPIAS: {total_copias}")
-        print(f"{'='*60}")
-
-    def obtener_vendedores_seleccionados(self):
-        """Retorna la lista de vendedores seleccionados"""
-        return self.vendedores_seleccionados
-
-    def obtener_vendedores_unicos(self):
-        """Retorna una lista de vendedores únicos"""
-        vendedores_unicos = []
-        vendedores_vistos = set()
-        
-        for vendedor in self.vendedores_seleccionados:
-            if vendedor['nombre'] not in vendedores_vistos:
-                vendedores_unicos.append(vendedor)
-                vendedores_vistos.add(vendedor['nombre'])
-        
-        return vendedores_unicos

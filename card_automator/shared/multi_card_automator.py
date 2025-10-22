@@ -237,33 +237,3 @@ class MultiCardAutomator:
     def cerrar_todo(self):
         """Cierra todas las pestañas y el navegador"""
         self.automator.cerrar()
-
-    def mostrar_vendedores_seleccionados(self):
-        """Muestra todos los vendedores seleccionados durante la sesión"""
-        vendedores = self.automator.obtener_vendedores_seleccionados()
-        
-        if not vendedores:
-            print("\n📋 No se han guardado vendedores en el arraylist")
-            return
-        
-        print(f"\n{'='*60}")
-        print("🏪 VENDEDORES SELECCIONADOS EN ESTA SESIÓN")
-        print(f"{'='*60}")
-        
-        # Agrupar por vendedor
-        from collections import defaultdict
-        vendedores_agrupados = defaultdict(list)
-        
-        for vendedor in vendedores:
-            vendedores_agrupados[vendedor['nombre']].append(vendedor)
-        
-        for nombre_vendedor, transacciones in vendedores_agrupados.items():
-            total_copias = sum(t['copias_compradas'] for t in transacciones)
-            total_gastado = sum(t['precio_unitario'] * t['copias_compradas'] for t in transacciones)
-            cartas_compradas = set(t['carta'] for t in transacciones)
-            
-            print(f"\n🏷️  {nombre_vendedor}:")
-            print(f"   📦 Total copias compradas: {total_copias}")
-            print(f"   💰 Total gastado: €{total_gastado:.2f}")
-            print(f"   🎴 Cartas compradas: {len(cartas_compradas)}")
-            print(f"   📋 Cartas: {', '.join(sorted(cartas_compradas))}")
