@@ -3,6 +3,7 @@ import time
 from selenium.webdriver.common.keys import Keys
 import re
 from collections import Counter
+import tkinter as tk  # Importar tkinter para la ventana de login
 
 class MultiCardAutomator:
     def __init__(self, plataforma="cardtrader"):
@@ -15,6 +16,32 @@ class MultiCardAutomator:
         self.cartas_fallidas = []   # Cartas únicas que fallaron
         self.copias_agregadas = 0   # Contador total de copias añadidas
         self.copias_falladas = 0    # Contador total de copias falladas
+        
+        # NUEVO: Verificar y forzar login al inicializar
+        self._verificar_y_forzar_login()
+    
+    def _verificar_y_forzar_login(self):
+        """Verifica la sesión y fuerza el login si es necesario"""
+        print(f"\n🔐 Verificando sesión en {self.plataforma}...")
+        
+        if not self.automator.verificar_sesion_activa():
+            print("❌ No hay sesión activa. Solicitando login...")
+            
+            # Crear una ventana principal para el diálogo
+            root = tk.Tk()
+            root.withdraw()  # Ocultar la ventana principal
+            
+            # Forzar login manual
+            if self.automator.forzar_login_manual(root):
+                print("✅ Login exitoso. Continuando con la búsqueda...")
+            else:
+                print("❌ Login fallado. No se puede continuar.")
+                root.destroy()
+                raise Exception("No se pudo iniciar sesión. El programa no puede continuar.")
+            
+            root.destroy()
+        else:
+            print("✅ Sesión activa verificada correctamente")
     
     def procesar_linea_carta(self, linea):
         """
@@ -99,6 +126,11 @@ class MultiCardAutomator:
     
     def procesar_lista_cartas(self, lista_cartas):
         """Procesa múltiples cartas cerrando pestañas anteriores"""
+        # Primero verificar que todavía tenemos sesión activa
+        if not self.automator.verificar_sesion_activa():
+            print("❌ Se perdió la sesión durante el proceso")
+            return 0, len(lista_cartas)
+        
         # Primero procesar la lista completa manejando cantidades y comas
         lista_procesada_completa = self.limpiar_y_procesar_lista_cartas(lista_cartas)
         
@@ -227,6 +259,12 @@ class MultiCardAutomator:
         else:
             print("🎉 ¡Todas las cartas se añadieron correctamente!")
         
+        # Mostrar resumen de vendedores si está disponible
+        try:
+            self.automator.mostrar_resumen_vendedores()
+        except:
+            pass
+        
         # Mostrar cuántas pestañas quedan abiertas
         try:
             pestañas_abiertas = len(self.automator.driver.window_handles)
@@ -237,3 +275,13 @@ class MultiCardAutomator:
     def cerrar_todo(self):
         """Cierra todas las pestañas y el navegador"""
         self.automator.cerrar()
+    
+    # NUEVO: Método para verificar sesión desde fuera
+    def verificar_sesion(self):
+        """Verifica si hay una sesión activa"""
+        return self.automator.verificar_sesion_activa()
+    
+    # NUEVO: Método para forzar login desde fuera
+    def forzar_login(self, parent_window=None):
+        """Fuerza un login manual"""
+        return self.automator.forzar_login_manual(parent_window)

@@ -22,6 +22,10 @@ class BaseAutomation:
         
         # Inicializar variable de vendedor
         self.ultimo_vendedor = None
+        
+        # NUEVO: Arraylist para guardar vendedores seleccionados
+        self.vendedores_seleccionados = []
+        print("📋 ArrayList de vendedores seleccionados inicializado")
     
     def cerrar_popups(self):
         """Cierra todos los popups molestos"""

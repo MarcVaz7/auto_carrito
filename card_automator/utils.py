@@ -92,31 +92,31 @@ class Utils:
         except:
             return None
 
-    def limpiar_y_convertir_precio_cardmarket(self, precio_str):
-        """Limpia precios específicos de CardMarket (formato europeo)"""
-        if not precio_str:
-            return None
-        
-        # CardMarket usa formato europeo: 0,40 €
-        precio_str = precio_str.strip()
-        
-        # Eliminar símbolo € y espacios
-        precio_str = precio_str.replace('€', '').strip()
-        
-        # Reemplazar coma por punto para decimales
-        precio_str = precio_str.replace(',', '.')
-        
-        # Eliminar puntos de miles (si los hay)
-        if '.' in precio_str:
-            partes = precio_str.split('.')
-            if len(partes) > 2:  # Tiene separadores de miles
-                precio_str = partes[0] + partes[1] + '.' + partes[2]
-            elif len(partes) == 2 and len(partes[1]) > 2:  # Probable separador de miles
-                precio_str = partes[0] + partes[1]
-        
+    def limpiar_y_convertir_precio_cardmarket(self, precio_texto):
+        """Limpia y convierte el precio de CardMarket - ROBUSTO"""
         try:
-            return float(precio_str)
-        except:
+            if not precio_texto:
+                return None
+            
+            # Limpiar el texto
+            precio_limpio = precio_texto.strip()
+            
+            # Remover símbolo de euro y espacios
+            precio_limpio = precio_limpio.replace('€', '').replace(' ', '')
+            
+            # Reemplazar coma por punto para conversión decimal
+            precio_limpio = precio_limpio.replace(',', '.')
+            
+            # Remover cualquier caracter no numérico excepto punto
+            precio_limpio = re.sub(r'[^\d.]', '', precio_limpio)
+            
+            # Convertir a float
+            precio_float = float(precio_limpio)
+            
+            return precio_float
+            
+        except Exception as e:
+            print(f"❌ Error convirtiendo precio '{precio_texto}': {e}")
             return None
     
     def coincidencia_flexible(self, texto, busqueda):
