@@ -3,9 +3,11 @@ from cardmarket.cardmarket_selector import CardMarketSelector
 from cardmarket.cardmarket_finder import CardMarketFinder
 from utils import Utils
 import time
+import re
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from cardmarket.cardmarket_vendedor import CardMarketVendedor
 
 class CardMarketAutomation(BaseAutomation):
     def __init__(self):
@@ -13,6 +15,7 @@ class CardMarketAutomation(BaseAutomation):
         self.utils = Utils(self.driver)
         self.selector = CardMarketSelector(self.driver, self.utils)
         self.finder = CardMarketFinder(self.driver, self.utils)
+        self.vendedor_manager = CardMarketVendedor(self.driver, self.utils)
         
         # NUEVO: Arraylist para guardar vendedores seleccionados
         self.vendedores_seleccionados = []
@@ -443,6 +446,16 @@ class CardMarketAutomation(BaseAutomation):
         print(f"❌ No se encontraron vendedores después de 5 intentos")
         return False
     
+    def buscar_en_vendedor_prioritario(self, nombre_carta, vendedor, condiciones, cantidad_necesaria=1):
+        """Delega la búsqueda en vendedor prioritario al manager especializado"""
+        return self.vendedor_manager.buscar_en_vendedor_prioritario(
+            nombre_carta, vendedor, condiciones, cantidad_necesaria
+        )
+    
+    def abrir_pagina_vendedor(self, nombre_vendedor):
+        """Delega la apertura de página del vendedor al manager"""
+        return self.vendedor_manager.abrir_pagina_vendedor(nombre_vendedor)
+    
     def _procesar_compra_con_cantidad(self, vendedores, cantidad_total, nombre_carta):
         """Procesa la compra de múltiples copias usando varios vendedores si es necesario"""
         cantidad_restante = cantidad_total
@@ -462,7 +475,7 @@ class CardMarketAutomation(BaseAutomation):
             print(f"   📊 Stock: {vendedor['stock_disponible']} unidades")
             print(f"   🛒 Comprando: {copias_a_comprar} copias")
             
-            # NUEVO: Guardar vendedor en el arraylist antes de agregar al carrito
+            # Guardar vendedor en el arraylist antes de agregar al carrito
             info_vendedor = {
                 'nombre': vendedor['vendedor'],
                 'precio_unitario': vendedor['precio'],
@@ -493,6 +506,9 @@ class CardMarketAutomation(BaseAutomation):
                 print(f"   ✅ {copias_a_comprar} copias agregadas al carrito")
                 print(f"   📦 Cantidad restante: {cantidad_restante}")
                 
+                # NUEVO: Abrir la página del vendedor después de agregar al carrito
+                self.abrir_pagina_vendedor(vendedor['vendedor'])
+                
                 # Si todavía necesitamos más copias, esperar un poco y continuar
                 if cantidad_restante > 0:
                     print("   ⏳ Buscando siguiente vendedor...")
@@ -506,12 +522,54 @@ class CardMarketAutomation(BaseAutomation):
             for vendedor in vendedores_usados:
                 print(f"   - {vendedor['vendedor']}: {vendedor['copias']} copias × €{vendedor['precio']:.2f}")
             
-            # NUEVO: Mostrar resumen de vendedores guardados
+            # Mostrar resumen de vendedores guardados
             self._mostrar_resumen_vendedores_guardados()
             return True
         else:
             print(f"\n⚠️ Solo se pudieron agregar {cantidad_total - cantidad_restante} de {cantidad_total} copias")
             return cantidad_total - cantidad_restante > 0
+        
+    def _abrir_pagina_vendedor(self, nombre_vendedor):
+        """Abre la página de ofertas del vendedor en una nueva pestaña"""
+        try:
+            # Limpiar el nombre del vendedor para la URL
+            nombre_limpio = self._limpiar_nombre_vendedor(nombre_vendedor)
+            
+            # Construir la URL del vendedor
+            url_vendedor = f"https://www.cardmarket.com/es/Magic/Users/{nombre_limpio}/Offers/Singles"
+            
+            print(f"   🌐 Abriendo página del vendedor: {url_vendedor}")
+            
+            # Abrir en nueva pestaña
+            self.driver.execute_script(f"window.open('{url_vendedor}', '_blank');")
+            
+            # Cambiar a la nueva pestaña
+            self.driver.switch_to.window(self.driver.window_handles[-1])
+            time.sleep(3)
+            
+            print(f"   ✅ Página del vendedor abierta correctamente")
+            
+            # Volver a la pestaña anterior (la del carrito)
+            self.driver.close()  # Cerrar la pestaña del vendedor
+            self.driver.switch_to.window(self.driver.window_handles[0])
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"   ❌ Error al abrir página del vendedor: {e}")
+            # Asegurarse de volver a la pestaña principal
+            try:
+                self.driver.switch_to.window(self.driver.window_handles[0])
+            except:
+                pass
+
+    def _limpiar_nombre_vendedor(self, nombre_vendedor):
+        """Limpia el nombre del vendedor para usarlo en la URL"""
+        # Reemplazar espacios por guiones y eliminar caracteres especiales
+        nombre_limpio = re.sub(r'[^\w\s-]', '', nombre_vendedor)
+        nombre_limpio = re.sub(r'[\s]+', '-', nombre_limpio)
+        nombre_limpio = nombre_limpio.strip('-')
+        
+        return nombre_limpio
     
     def _mostrar_resumen_vendedores_guardados(self):
         """Muestra un resumen de todos los vendedores guardados en el arraylist"""

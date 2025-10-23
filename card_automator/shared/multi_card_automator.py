@@ -16,6 +16,7 @@ class MultiCardAutomator:
         self.cartas_fallidas = []   # Cartas únicas que fallaron
         self.copias_agregadas = 0   # Contador total de copias añadidas
         self.copias_falladas = 0    # Contador total de copias falladas
+        self.vendedores_prioritarios = []
         
         # NUEVO: Verificar y forzar login al inicializar
         self._verificar_y_forzar_login()
@@ -210,9 +211,35 @@ class MultiCardAutomator:
                 self.automator = CardAutomation(self.plataforma)
     
     def _procesar_carta_en_pestana(self, nombre_carta, cantidad_necesaria, numero_carta):
-        """Procesa una carta en la pestaña actual con reintentos automáticos"""
+        """Procesa una carta en la pestaña actual con el nuevo flujo optimizado"""
         try:
             inicio = time.time()
+            
+            # NUEVO FLUJO: Buscar primero en vendedores prioritarios si los hay
+            if self.vendedores_prioritarios and numero_carta > 1:
+                print(f"🎯 Buscando en {len(self.vendedores_prioritarios)} vendedores prioritarios...")
+                
+                for i, vendedor in enumerate(self.vendedores_prioritarios, 1):
+                    print(f"  🔍 Probando vendedor {i}/{len(self.vendedores_prioritarios)}: {vendedor['nombre']}")
+                    
+                    # Intentar buscar la carta en este vendedor
+                    resultado = self.automator.buscar_en_vendedor_prioritario(
+                        nombre_carta, 
+                        vendedor, 
+                        self.condiciones, 
+                        cantidad_necesaria
+                    )
+                    
+                    if resultado:
+                        tiempo_total = time.time() - inicio
+                        print(f"✅ '{nombre_carta}' (x{cantidad_necesaria}) agregada desde vendedor prioritario")
+                        print(f"⏱️  TIEMPO TOTAL: {tiempo_total:.1f}s")
+                        return True
+                
+                print("❌ No se encontró la carta en ningún vendedor prioritario")
+            
+            # FLUJO NORMAL: Búsqueda tradicional
+            print("🔄 Usando búsqueda tradicional...")
             
             # PASO 1: Buscar desde página principal
             if not self.automator.buscar_desde_pagina_principal(nombre_carta):
@@ -232,6 +259,9 @@ class MultiCardAutomator:
                 tiempo_total = time.time() - inicio
                 print(f"✅ '{nombre_carta}' (x{cantidad_necesaria}) agregada correctamente")
                 print(f"⏱️  TIEMPO TOTAL: {tiempo_total:.1f}s")
+                
+                # NUEVO: Actualizar lista de vendedores prioritarios
+                self._actualizar_vendedores_prioritarios()
                 return True
             else:
                 print(f"❌ No se pudo agregar '{nombre_carta}' (x{cantidad_necesaria}) después de todos los intentos")
@@ -240,6 +270,17 @@ class MultiCardAutomator:
         except Exception as e:
             print(f"❌ Error procesando '{nombre_carta}': {e}")
             return False
+        
+    def _actualizar_vendedores_prioritarios(self):
+        """Actualiza la lista de vendedores prioritarios desde el automator"""
+        try:
+            vendedores = self.automator.obtener_vendedores_seleccionados()
+            if vendedores:
+                # Mantener solo los últimos 5 vendedores para no hacer demasiadas búsquedas
+                self.vendedores_prioritarios = vendedores[-5:]
+                print(f"📋 Vendedores prioritarios actualizados: {len(self.vendedores_prioritarios)}")
+        except Exception as e:
+            print(f"⚠️ Error actualizando vendedores prioritarios: {e}")
     
     def mostrar_resumen(self):
         """Muestra un resumen detallado de los resultados"""

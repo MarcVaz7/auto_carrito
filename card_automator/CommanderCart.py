@@ -25,6 +25,16 @@ class CardAutomation:
         
         # NUEVO: Iniciar sesión automáticamente DESPUÉS de crear automation
         self._iniciar_sesion_automatica()
+
+    def buscar_en_vendedor_prioritario(self, nombre_carta, vendedor, condiciones, cantidad_necesaria=1):
+        """Busca una carta en un vendedor prioritario - delega al automation específico"""
+        if hasattr(self.automation, 'buscar_en_vendedor_prioritario'):
+            return self.automation.buscar_en_vendedor_prioritario(
+                nombre_carta, vendedor, condiciones, cantidad_necesaria
+            )
+        else:
+            print(f"❌ Plataforma {self.plataforma} no soporta búsqueda en vendedores prioritarios")
+            return False
     
     def _iniciar_sesion_automatica(self):
         """Intenta iniciar sesión automáticamente con credenciales guardadas"""
