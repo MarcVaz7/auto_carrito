@@ -333,7 +333,7 @@ class CardMarketAutomation(BaseAutomation):
         print("❌ No se pudo verificar claramente el login")
         return False
         
-        # Buscar elementos que indican sesión activa en CardMarket
+            # Buscar elementos que indican sesión activa en CardMarket
         indicadores_sesion = [
             "//a[contains(@href, '/users/sign_out')]",
             "//a[contains(text(), 'Mi cuenta')]",

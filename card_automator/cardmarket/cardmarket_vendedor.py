@@ -11,12 +11,14 @@ class CardMarketVendedor:
         self.wait = WebDriverWait(driver, 10)
     
     def buscar_en_vendedor_prioritario(self, nombre_carta, vendedor, condiciones, cantidad_necesaria=1):
-        """Busca una carta en un vendedor prioritario"""
+        """Busca una carta en un vendedor prioritario - MANEJANDO VERSIONES"""
         try:
             print(f"  🔍 Buscando '{nombre_carta}' en vendedor {vendedor['nombre']}...")
             
-            # Construir URL de búsqueda en el vendedor
-            nombre_carta_codificado = nombre_carta.replace(' ', '%20')
+            # Simplificar nombre para la URL (manejando versiones)
+            nombre_carta_simplificado = self._simplificar_nombre_para_url(nombre_carta)
+            nombre_carta_codificado = nombre_carta_simplificado.replace(' ', '%20')
+            
             url_busqueda = f"https://www.cardmarket.com/es/Magic/Users/{self._limpiar_nombre_vendedor(vendedor['nombre'])}/Offers/Singles?name={nombre_carta_codificado}&sortBy=name_asc"
             
             print(f"  🌐 Navegando a: {url_busqueda}")
@@ -41,6 +43,24 @@ class CardMarketVendedor:
         except Exception as e:
             print(f"  ❌ Error buscando en vendedor prioritario: {e}")
             return False
+        
+    def _simplificar_nombre_para_url(self, nombre):
+        """Simplifica el nombre para usarlo en la URL de búsqueda"""
+        if not nombre:
+            return ""
+        
+        # Convertir a minúsculas
+        nombre_simplificado = nombre.lower()
+        
+        # Quitar versiones: "Forest (V.1)" -> "forest"
+        nombre_simplificado = re.sub(r'\s*\(v\.\d+\)', '', nombre_simplificado)
+        nombre_simplificado = re.sub(r'\s*\(version\s*\d+\)', '', nombre_simplificado, flags=re.IGNORECASE)
+        
+        # Eliminar caracteres especiales
+        nombre_simplificado = re.sub(r'[^\w\s]', '', nombre_simplificado)
+        nombre_simplificado = re.sub(r'\s+', ' ', nombre_simplificado).strip()
+        
+        return nombre_simplificado
 
     def _buscar_carta_en_vendedor(self, nombre_carta, condiciones, cantidad_necesaria=1):
         """Busca una carta específica en la página de ofertas del vendedor"""
@@ -110,32 +130,87 @@ class CardMarketVendedor:
             return False
 
     def _cumple_filtro_nombre_vendedor(self, articulo, nombre_carta):
-        """Verifica que el artículo tenga el nombre correcto comparando con el href"""
+        """Verifica que el artículo tenga el nombre correcto comparando con el href - CON VERSIONES"""
         try:
             enlace = articulo.find_element(By.CSS_SELECTOR, "a[href*='/Singles/']")
             href = enlace.get_attribute('href')
             
-            # Extraer la parte final del href (el nombre de la carta en inglés)
-            # Ejemplo: "/es/Magic/Products/Singles/Commander-Tarkir-Dragonstorm/Sol-Ring" -> "Sol-Ring"
-            partes_href = href.split('/')
-            nombre_href = partes_href[-1] if partes_href else ""
+            print(f"      🔗 HREF encontrado: {href}")
             
-            # Simplificar nombres para comparación
-            nombre_buscado_simplificado = self._simplificar_nombre_href(nombre_carta)
-            nombre_encontrado_simplificado = self._simplificar_nombre_href(nombre_href)
+            # Extraer el nombre de la carta del href
+            nombre_href = self._extraer_nombre_desde_href(href)
+            
+            if not nombre_href:
+                print("      ❌ No se pudo extraer nombre del href")
+                return False
+            
+            # Simplificar nombres para comparación (manejando versiones)
+            nombre_buscado_simplificado = self._simplificar_nombre_con_versiones(nombre_carta)
+            nombre_encontrado_simplificado = self._simplificar_nombre_con_versiones(nombre_href)
+            
+            print(f"      🔍 Comparando: '{nombre_buscado_simplificado}' vs '{nombre_encontrado_simplificado}'")
             
             coincide = nombre_buscado_simplificado == nombre_encontrado_simplificado
             
             if not coincide:
-                print(f"      ❌ Nombre no coincide: '{nombre_href}' (buscado: '{nombre_carta}')")
+                print(f"      ❌ Nombre no coincide")
             else:
-                print(f"      ✅ Nombre coincide: '{nombre_href}'")
+                print(f"      ✅ Nombre coincide perfectamente")
             
             return coincide
             
         except Exception as e:
             print(f"      ❌ Error verificando nombre: {e}")
             return False
+        
+    def _extraer_nombre_desde_href(self, href):
+        """Extrae el nombre de la carta desde el href - MANEJANDO VERSIONES"""
+        try:
+            # Buscar el patrón /Singles/.../nombre-carta (puede tener -V-1)
+            patron = r'/Singles/[^/]+/([^/?]+)'
+            match = re.search(patron, href)
+            
+            if match:
+                nombre_con_version = match.group(1)
+                # Quitar la versión para obtener el nombre base
+                nombre_base = re.sub(r'-v-\d+$', '', nombre_con_version)
+                return nombre_base
+            
+            # Fallback: tomar la última parte del URL
+            partes = href.split('/')
+            nombre_con_version = partes[-1] if partes else ""
+            nombre_base = re.sub(r'-v-\d+$', '', nombre_con_version)
+            return nombre_base
+            
+        except Exception as e:
+            print(f"      ❌ Error extrayendo nombre del href: {e}")
+            return ""
+        
+    def _simplificar_nombre_con_versiones(self, nombre):
+        """Simplifica el nombre manejando versiones como (V.1) o -V-1"""
+        if not nombre:
+            return ""
+        
+        # Convertir a minúsculas
+        nombre_simplificado = nombre.lower()
+        
+        # Manejar versiones en formato URL: "Forest-V-1" -> "forest"
+        nombre_simplificado = re.sub(r'-v-\d+', '', nombre_simplificado)
+        
+        # Manejar versiones en formato texto: "Forest (V.1)" -> "forest"
+        nombre_simplificado = re.sub(r'\s*\(v\.\d+\)', '', nombre_simplificado)
+        
+        # Reemplazar guiones por espacios (ej: "Sol-Ring" -> "sol ring")
+        nombre_simplificado = nombre_simplificado.replace('-', ' ')
+        
+        # Eliminar cualquier parámetro de URL (ej: "?param=value")
+        nombre_simplificado = nombre_simplificado.split('?')[0]
+        
+        # Eliminar caracteres especiales y espacios múltiples
+        nombre_simplificado = re.sub(r'[^\w\s]', '', nombre_simplificado)
+        nombre_simplificado = re.sub(r'\s+', ' ', nombre_simplificado).strip()
+        
+        return nombre_simplificado
 
     def _simplificar_nombre_href(self, nombre):
         """Simplifica el nombre del href para comparación"""
