@@ -27,25 +27,28 @@ class CardAutomatorGUI:
         
         self.setup_ui()
         
-        # NUEVO: Verificar login al inicializar
-        self.verificar_login_inicial()
+        # ACTUALIZADO: Verificar configuración al inicializar
+        self.verificar_configuracion_inicial()
     
-    def verificar_login_inicial(self):
-        """Verifica el login al iniciar la aplicación"""
+    def verificar_configuracion_inicial(self):
+        """Verifica la configuración al iniciar la aplicación"""
         try:
-            # No crear el automator aquí todavía, solo verificar credenciales
             plataforma = self.platform_var.get()
-            creds = self.config_manager.get_credentials(plataforma)
             
-            if creds.get('username') and creds.get('password'):
-                self.log_message(f"✅ Credenciales encontradas para {plataforma.upper()}")
-                self.update_status(f"Credenciales configuradas para {plataforma.upper()}")
+            if plataforma == "cardtrader":
+                self.log_message(f"🌐 CardTrader: Modo invitado - no se requieren credenciales")
+                self.update_status("CardTrader - Modo invitado")
             else:
-                self.log_message(f"ℹ️ No hay credenciales guardadas para {plataforma.upper()}")
-                self.update_status(f"Configura credenciales para {plataforma.upper()}")
+                creds = self.config_manager.get_credentials(plataforma)
+                if creds.get('username') and creds.get('password'):
+                    self.log_message(f"✅ Credenciales encontradas para {plataforma.upper()}")
+                    self.update_status(f"Credenciales configuradas para {plataforma.upper()}")
+                else:
+                    self.log_message(f"ℹ️ No hay credenciales guardadas para {plataforma.upper()}")
+                    self.update_status(f"Configura credenciales para {plataforma.upper()}")
                 
         except Exception as e:
-            self.log_message(f"❌ Error al verificar credenciales: {e}")
+            self.log_message(f"❌ Error al verificar configuración: {e}")
     
     def setup_ui(self):
         # Frame principal
@@ -74,7 +77,7 @@ class CardAutomatorGUI:
         
         def on_platform_change(*args):
             """Se ejecuta cuando cambia la plataforma"""
-            self.verificar_login_inicial()
+            self.verificar_configuracion_inicial()
         
         self.platform_var.trace('w', on_platform_change)
         
@@ -85,9 +88,9 @@ class CardAutomatorGUI:
         ttk.Button(platform_frame, text="🔐 Gestionar Credenciales", 
                   command=self.gestionar_credenciales).pack(side=tk.LEFT, padx=(20, 0))
         
-        # Botón de verificar sesión (NUEVO)
-        ttk.Button(platform_frame, text="🔍 Verificar Sesión", 
-                  command=self.verificar_sesion_actual).pack(side=tk.LEFT, padx=(10, 0))
+        # ACTUALIZADO: Botón de verificar estado
+        ttk.Button(platform_frame, text="🔍 Verificar Estado", 
+                  command=self.verificar_estado_actual).pack(side=tk.LEFT, padx=(10, 0))
         
         # Instrucciones
         instructions = ttk.Label(main_frame, 
@@ -157,49 +160,88 @@ class CardAutomatorGUI:
         status_label = ttk.Label(main_frame, textvariable=self.status_var, font=("Arial", 9))
         status_label.grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
     
-    def verificar_sesion_actual(self):
-        """Verifica la sesión actual creando un automator temporal"""
+    def verificar_estado_actual(self):
+        """Verifica el estado actual de la plataforma"""
         plataforma = self.platform_var.get()
         
-        # Verificar credenciales primero
-        creds = self.config_manager.get_credentials(plataforma)
-        if not creds.get('username') or not creds.get('password'):
-            messagebox.showinfo(
-                "Verificar Sesión", 
-                f"No hay credenciales guardadas para {plataforma.upper()}.\n\n"
-                "Usa 'Gestionar Credenciales' para configurarlas."
-            )
-            return
-        
-        try:
-            self.log_message(f"🔍 Verificando sesión en {plataforma.upper()}...")
-            self.update_status("Verificando sesión...")
+        if plataforma == "cardtrader":
+            self.log_message("🌐 CardTrader: Verificando estado...")
+            self.update_status("Verificando CardTrader...")
             
-            # Crear automator temporal para verificar sesión
-            automator_temp = MultiCardAutomator(plataforma=plataforma)
+            try:
+                # Crear automator temporal para verificar estado
+                automator_temp = MultiCardAutomator(plataforma=plataforma)
+                
+                self.log_message("✅ CardTrader configurado correctamente")
+                self.log_message("💡 Modo invitado - no se requiere sesión activa")
+                self.update_status("CardTrader - Listo (modo invitado)")
+                
+                messagebox.showinfo(
+                    "CardTrader - Estado", 
+                    "CardTrader está configurado correctamente.\n\n"
+                    "Modo: Invitado\n"
+                    "No se requiere iniciar sesión para buscar cartas.\n"
+                    "El usuario iniciará sesión manualmente al pagar."
+                )
+                
+                # Cerrar el automator temporal
+                automator_temp.cerrar_todo()
+                
+            except Exception as e:
+                self.log_message(f"❌ Error al verificar CardTrader: {e}")
+                self.update_status("Error verificando CardTrader")
+                messagebox.showerror("Error", f"No se pudo verificar CardTrader:\n{str(e)}")
+        else:
+            # Código existente para CardMarket
+            creds = self.config_manager.get_credentials(plataforma)
+            if not creds.get('username') or not creds.get('password'):
+                messagebox.showinfo(
+                    "Verificar Estado", 
+                    f"No hay credenciales guardadas para {plataforma.upper()}.\n\n"
+                    "Usa 'Gestionar Credenciales' para configurarlas."
+                )
+                return
             
-            if automator_temp.verificar_sesion():
-                self.log_message("✅ Sesión activa verificada correctamente")
-                self.update_status("Sesión activa")
-                messagebox.showinfo("Verificación de Sesión", "✅ Sesión activa verificada correctamente")
-            else:
-                self.log_message("❌ No hay sesión activa")
-                self.update_status("No hay sesión activa")
-                messagebox.showwarning("Verificación de Sesión", 
-                                    "❌ No hay una sesión activa.\n\n"
-                                    "Inicia la automatización para forzar el login.")
-            
-            # Cerrar el automator temporal
-            automator_temp.cerrar_todo()
-            
-        except Exception as e:
-            self.log_message(f"❌ Error al verificar sesión: {e}")
-            self.update_status("Error verificando sesión")
-            messagebox.showerror("Error", f"No se pudo verificar la sesión:\n{str(e)}")
+            try:
+                self.log_message(f"🔍 Verificando estado en {plataforma.upper()}...")
+                self.update_status("Verificando estado...")
+                
+                # Crear automator temporal para verificar sesión
+                automator_temp = MultiCardAutomator(plataforma=plataforma)
+                
+                if automator_temp.verificar_sesion():
+                    self.log_message("✅ Sesión activa verificada correctamente")
+                    self.update_status("Sesión activa")
+                    messagebox.showinfo("Verificación de Estado", "✅ Sesión activa verificada correctamente")
+                else:
+                    self.log_message("❌ No hay sesión activa")
+                    self.update_status("No hay sesión activa")
+                    messagebox.showwarning("Verificación de Estado", 
+                                        "❌ No hay una sesión activa.\n\n"
+                                        "Inicia la automatización para forzar el login.")
+                
+                # Cerrar el automator temporal
+                automator_temp.cerrar_todo()
+                
+            except Exception as e:
+                self.log_message(f"❌ Error al verificar estado: {e}")
+                self.update_status("Error verificando estado")
+                messagebox.showerror("Error", f"No se pudo verificar el estado:\n{str(e)}")
     
     def gestionar_credenciales(self):
         """Gestiona las credenciales guardadas"""
         plataforma = self.platform_var.get()
+        
+        if plataforma == "cardtrader":
+            messagebox.showinfo(
+                "CardTrader - Información",
+                "CardTrader no requiere credenciales guardadas.\n\n"
+                "La plataforma funciona en modo invitado.\n"
+                "Las cartas se agregan al carrito sin necesidad de iniciar sesión.\n"
+                "El usuario inicia sesión manualmente al finalizar la compra."
+            )
+            return
+        
         creds = self.config_manager.get_credentials(plataforma)
         
         if creds.get('username'):
@@ -363,37 +405,41 @@ class CardAutomatorGUI:
         
         return todas_las_cartas
     
-    def verificar_login(self, plataforma):
-        """Verifica y gestiona el login para la plataforma"""
-        # Verificar si ya tenemos credenciales guardadas
-        creds = self.config_manager.get_credentials(plataforma)
-        
-        if not creds.get('username') or not creds.get('password'):
-            # Pedir credenciales al usuario
-            respuesta = messagebox.askyesno(
-                "Credenciales Requeridas",
-                f"No hay credenciales guardadas para {plataforma.upper()}.\n\n¿Quieres configurarlas ahora?"
-            )
+    def verificar_configuracion(self, plataforma):
+        """Verifica y gestiona la configuración para la plataforma"""
+        if plataforma == "cardtrader":
+            # CardTrader no requiere credenciales
+            self.log_message("🌐 CardTrader: No se requieren credenciales - modo invitado")
+            return True
+        else:
+            # CardMarket requiere credenciales
+            creds = self.config_manager.get_credentials(plataforma)
             
-            if not respuesta:
-                return False
+            if not creds.get('username') or not creds.get('password'):
+                respuesta = messagebox.askyesno(
+                    "Credenciales Requeridas",
+                    f"No hay credenciales guardadas para {plataforma.upper()}.\n\n¿Quieres configurarlas ahora?"
+                )
+                
+                if not respuesta:
+                    return False
+                
+                dialog = LoginDialog(self.root, plataforma)
+                resultado = dialog.show()
+                
+                if not resultado:
+                    return False
+                
+                # Guardar credenciales si el usuario quiere
+                if resultado['remember']:
+                    self.config_manager.set_credentials(plataforma, 
+                                                      resultado['username'], 
+                                                      resultado['password'])
+                    self.log_message(f"🔐 Credenciales guardadas para {plataforma.upper()}")
+                else:
+                    self.log_message(f"🔐 Credenciales configuradas para {plataforma.upper()}")
             
-            dialog = LoginDialog(self.root, plataforma)
-            resultado = dialog.show()
-            
-            if not resultado:
-                return False
-            
-            # Guardar credenciales si el usuario quiere
-            if resultado['remember']:
-                self.config_manager.set_credentials(plataforma, 
-                                                  resultado['username'], 
-                                                  resultado['password'])
-                self.log_message(f"🔐 Credenciales guardadas para {plataforma.upper()}")
-            else:
-                self.log_message(f"🔐 Credenciales configuradas para {plataforma.upper()}")
-        
-        return True
+            return True
     
     def start_automation(self):
         """Inicia la automatización en un hilo separado"""
@@ -405,12 +451,23 @@ class CardAutomatorGUI:
         
         plataforma = self.platform_var.get()
         
-        # VERIFICAR LOGIN PRIMERO
-        if not self.verificar_login(plataforma):
-            self.log_message("❌ Automatización cancelada: se requieren credenciales")
+        # VERIFICAR CONFIGURACIÓN PRIMERO
+        if not self.verificar_configuracion(plataforma):
+            self.log_message("❌ Automatización cancelada: configuración requerida")
             return
         
         self.log_message(f"🌐 Plataforma seleccionada: {plataforma.upper()}")
+        
+        # Mostrar información específica por plataforma
+        if plataforma == "cardtrader":
+            self.log_message("💡 CardTrader: Modo invitado activado")
+            self.log_message("   - No se requiere iniciar sesión")
+            self.log_message("   - Las cartas se agregan al carrito como invitado")
+            self.log_message("   - Inicia sesión manualmente al pagar")
+        else:
+            self.log_message("💡 CardMarket: Modo con sesión activa")
+            self.log_message("   - Se requiere sesión activa")
+            self.log_message("   - Las cartas se agregan a tu cuenta")
         
         # Mostrar transformación en el log
         self.log_message("🧹 Procesando lista de cartas...")
@@ -452,7 +509,7 @@ class CardAutomatorGUI:
     def run_automation(self, cards, plataforma):
         """Ejecuta la automatización (en hilo separado)"""
         try:
-            # NUEVO: El MultiCardAutomator ahora verifica el login automáticamente
+            # El MultiCardAutomator ahora maneja la configuración automáticamente
             self.automator = MultiCardAutomator(plataforma=plataforma)
             
             # Redirigir print a nuestro logger

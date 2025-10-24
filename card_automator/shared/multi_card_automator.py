@@ -3,7 +3,7 @@ import time
 from selenium.webdriver.common.keys import Keys
 import re
 from collections import Counter
-import tkinter as tk  # Importar tkinter para la ventana de login
+import tkinter as tk
 
 class MultiCardAutomator:
     def __init__(self, plataforma="cardtrader"):
@@ -18,31 +18,37 @@ class MultiCardAutomator:
         self.copias_falladas = 0    # Contador total de copias falladas
         self.vendedores_prioritarios = []
         
-        # NUEVO: Verificar y forzar login al inicializar
-        self._verificar_y_forzar_login()
+        # ACTUALIZADO: Configurar la plataforma sin forzar login
+        self._configurar_plataforma()
     
-    def _verificar_y_forzar_login(self):
-        """Verifica la sesión y fuerza el login si es necesario"""
-        print(f"\n🔐 Verificando sesión en {self.plataforma}...")
+    def _configurar_plataforma(self):
+        """Configura la plataforma según el tipo - CardTrader no requiere login"""
+        print(f"\n🔐 Configurando {self.plataforma}...")
         
-        if not self.automator.verificar_sesion_activa():
-            print("❌ No hay sesión activa. Solicitando login...")
-            
-            # Crear una ventana principal para el diálogo
-            root = tk.Tk()
-            root.withdraw()  # Ocultar la ventana principal
-            
-            # Forzar login manual
-            if self.automator.forzar_login_manual(root):
-                print("✅ Login exitoso. Continuando con la búsqueda...")
-            else:
-                print("❌ Login fallado. No se puede continuar.")
-                root.destroy()
-                raise Exception("No se pudo iniciar sesión. El programa no puede continuar.")
-            
-            root.destroy()
+        if self.plataforma == "cardtrader":
+            print("🌐 CardTrader: Modo invitado activado")
+            print("💡 No se requiere sesión - las cartas se agregan como invitado")
+            print("✅ CardTrader configurado correctamente")
         else:
-            print("✅ Sesión activa verificada correctamente")
+            # Para CardMarket, verificar si necesita login
+            if not self.automator.verificar_sesion_activa():
+                print("❌ No hay sesión activa en CardMarket. Solicitando login...")
+                
+                # Crear una ventana principal para el diálogo
+                root = tk.Tk()
+                root.withdraw()
+                
+                # Forzar login manual solo para CardMarket
+                if self.automator.forzar_login_manual(root):
+                    print("✅ Login exitoso. Continuando con la búsqueda...")
+                else:
+                    print("❌ Login fallado. No se puede continuar.")
+                    root.destroy()
+                    raise Exception("No se pudo iniciar sesión en CardMarket. El programa no puede continuar.")
+                
+                root.destroy()
+            else:
+                print("✅ Sesión activa verificada correctamente en CardMarket")
     
     def procesar_linea_carta(self, linea):
         """
@@ -127,8 +133,8 @@ class MultiCardAutomator:
     
     def procesar_lista_cartas(self, lista_cartas):
         """Procesa múltiples cartas cerrando pestañas anteriores"""
-        # Primero verificar que todavía tenemos sesión activa
-        if not self.automator.verificar_sesion_activa():
+        # Para CardMarket, verificar que todavía tenemos sesión activa
+        if self.plataforma == "cardmarket" and not self.automator.verificar_sesion_activa():
             print("❌ Se perdió la sesión durante el proceso")
             return 0, len(lista_cartas)
         
@@ -317,12 +323,19 @@ class MultiCardAutomator:
         """Cierra todas las pestañas y el navegador"""
         self.automator.cerrar()
     
-    # NUEVO: Método para verificar sesión desde fuera
+    # ACTUALIZADO: Método para verificar estado desde fuera
     def verificar_sesion(self):
-        """Verifica si hay una sesión activa"""
-        return self.automator.verificar_sesion_activa()
+        """Verifica si hay una sesión activa (solo para CardMarket)"""
+        if self.plataforma == "cardtrader":
+            return True  # CardTrader siempre funciona en modo invitado
+        else:
+            return self.automator.verificar_sesion_activa()
     
-    # NUEVO: Método para forzar login desde fuera
+    # ACTUALIZADO: Método para forzar login desde fuera (solo para CardMarket)
     def forzar_login(self, parent_window=None):
-        """Fuerza un login manual"""
-        return self.automator.forzar_login_manual(parent_window)
+        """Fuerza un login manual (solo para CardMarket)"""
+        if self.plataforma == "cardtrader":
+            print("🌐 CardTrader: No se requiere login - modo invitado")
+            return True
+        else:
+            return self.automator.forzar_login_manual(parent_window)
